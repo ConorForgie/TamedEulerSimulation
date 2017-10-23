@@ -1,0 +1,10 @@
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\bin\Debug\Simulation.exe.config
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\bin\Debug\Simulation.exe
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\bin\Debug\Simulation.pdb
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\bin\Debug\MathNet.Numerics.dll
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\bin\Debug\MathNet.Numerics.xml
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\obj\Debug\Simulation.csprojResolveAssemblyReference.cache
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\obj\Debug\Simulation.exe
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\obj\Debug\Simulation.pdb
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\bin\Debug\MathNet.Numerics.Data.Text.dll
+C:\Users\con-4\Documents\Uni\Summer Project\C#\Simulation\Simulation\bin\Debug\MathNet.Numerics.Data.Text.xml
