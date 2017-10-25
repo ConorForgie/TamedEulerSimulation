@@ -28,15 +28,15 @@ namespace Simulation
         static void Main(string[] args)
         {
             //MC Params
-            int n2steps = 5;
+            int n2steps = 10;
             int[] Narr = new int[n2steps];
             for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
             int Nmax = Narr[Narr.Length - 1];
             int M = 1000;
 
             //Run Calcs and only save end values
+            Matrix<double> Xs = Matrix<double>.Build.Dense(2, n2steps, 0); 
             Matrix<double> Xn = Matrix<double>.Build.Dense(2, n2steps, 1); 
-            Matrix<double> Xnp1 = Matrix<double>.Build.Dense(2, n2steps, 1); 
 
             for (int m = 0; m < M; m++)
             {
@@ -47,15 +47,20 @@ namespace Simulation
                 Matrix<double> randnMatrix = Matrix<double>.Build.DenseOfRowArrays(randn1, randn2);
                 for(int n = 0; n < Nmax; n++)
                 {
-                    //Xn = Xnp1;          
                     for(int i=0; i<n2steps; i++)
                     {
-                        Xnp1.SetColumn(i, Xnp1.Column(i) + CalculateOneStep(Xnp1.Column(i), randnMatrix.Column(n), n, T/Narr[i]));
+                        if (n % Narr[Narr.Length - 1 - i] == 0)
+                        {
+                            //Console.WriteLine("i = {0}, n = {1}", i, n);
+                            Xn.SetColumn(i, Xn.Column(i) + CalculateOneStep(Xn.Column(i), randnMatrix.Column(n), n, T / Narr[i]));
+                        }
                     }
-                }                
+                }
+                Xs += Xn;
             }
-
-            DelimitedWriter.Write("../../../Xnp1.csv", Xnp1, ",");
+            Xs *= 1 / M;
+            //Console.ReadKey();
+            DelimitedWriter.Write("../../../Xnp1.csv", Xn, ",");
 
         }
     }
