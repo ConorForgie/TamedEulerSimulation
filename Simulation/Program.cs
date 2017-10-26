@@ -10,6 +10,8 @@ namespace Simulation
 {
     class Program
     {
+        //Serial/Parallel
+        private const bool serial = true;
         // SDE Params
         private const double lambda = 2.5;
         private const double mu = 1;
@@ -66,13 +68,29 @@ namespace Simulation
             //Run Calcs and only save end values
             Vector<double> Xs = Vector<double>.Build.Dense(n2steps, 0);
 
-            for (int m = 0; m < M; m++)
-                Xs += RunMC();
+            if (serial)
+            {
+                for (int m = 0; m < M; m++)
+                    Xs += RunMC();
+            }
+            else
+            {
+                object mylock = new object();
 
-            //Parallel.For(0, M, 
-            //    () => Vector<double>.Build.Dense(n2steps,0),
-            //Interlocked.Add(ref v, Xs) );
-            
+                Parallel.For(0, M,
+                    () => Vector<double>.Build.Dense(n2steps, 0),
+                (m, loopstate, vec) =>
+                {
+                    vec = RunMC();
+                    return vec;
+                },
+                (vec) =>
+                {
+                    lock (mylock) { Xs = Xs + vec; }
+                }
+                );
+            }
+
             Xs = Xs / M;
             Xs.PointwiseSqrt();
             Console.Write(Xs);
