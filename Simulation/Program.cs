@@ -24,7 +24,7 @@ namespace Simulation
         private const int M = 10000;
         
 
-        static void Main(string[] args)
+        static void OldMain(string[] args)
         {
             //MC Params
             for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
