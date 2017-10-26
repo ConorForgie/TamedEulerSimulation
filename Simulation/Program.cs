@@ -11,7 +11,7 @@ namespace Simulation
     class Program
     {
         //Serial/Parallel
-        private const bool serial = true;
+        private const bool serial = false;
         // SDE Params
         private const double lambda = 2.5;
         private const double mu = 1;
@@ -21,14 +21,63 @@ namespace Simulation
         private const int n2steps = 10;
         private static int[] Narr = new int[n2steps];
         private static int Nmax;
-        private const int M = 1000;
+        private const int M = 10000;
+        
 
-        private static Vector<double> CalculateOneStep(Vector<double> X, Vector<double> z, int n, double h)
+        static void Main(string[] args)
         {
-            double tamedCoeff = 1 / (1 + Math.Pow(n, -1 / 2) * X.L2Norm());
+            //MC Params
+            for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
+            Nmax = Narr[Narr.Length - 1];
 
-            return tamedCoeff * X * (lambda * (mu - X.L2Norm())) * h + tamedCoeff * eta * Math.Pow(X.L2Norm(), 3 / 2) * z * Math.Sqrt(h);
+            //Run Calcs and only save end values
+            Vector<double> Xs = Vector<double>.Build.Dense(n2steps, 0);
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
+            if (serial)
+            {
+                Console.WriteLine("Running in Serial");
+                for (int m = 0; m < M; m++)
+                    Xs += RunMC();
+            }
+            else
+            {
+                Console.WriteLine("Running in Parallel");
+
+                object mylock = new object();
+
+                Parallel.For(0, M,
+                    () => Vector<double>.Build.Dense(n2steps, 0),
+                (m, loopstate, vec) =>
+                {
+                    vec += RunMC();
+                    return vec;
+                },
+                (vec) =>
+                {
+                    lock (mylock) { Xs = Xs + vec; }
+                }
+                );
+                
+            }
+            watch.Stop();
+            TimeSpan elapsedMs = watch.Elapsed;
+            Xs = Xs / M;
+            Xs.PointwiseSqrt();
+            Console.Write(Xs);
+            Console.WriteLine("Elapsed time = " + elapsedMs.ToString("mm\\:ss\\.ff"));
+            Console.ReadKey();
+            //DelimitedWriter.Wirte("../../../Xnp1.csv", Xn, ",");
+
         }
+
+        //private static Vector<double> CalculateOneStep(Vector<double> X, Vector<double> z, int n, double h)
+        //{
+        //    double tamedCoeff = 1 / (1 + Math.Pow(n, -1 / 2) * X.L2Norm());
+
+        //    return tamedCoeff * X * (lambda * (mu - X.L2Norm())) * h + tamedCoeff * eta * Math.Pow(X.L2Norm(), 3 / 2) * z * Math.Sqrt(h);
+        //}
 
         private static Vector<double> RunMC()
         {
@@ -46,7 +95,16 @@ namespace Simulation
                 {
                     if (n % Narr[Narr.Length - 1 - i] == 0)
                     {
-                        Xn.SetColumn(i, Xn.Column(i) + CalculateOneStep(Xn.Column(i), randnMatrix.Column(n), n, T / Narr[i]));
+                        Vector<double> X = Xn.Column(i);
+                        Vector<double> z = randnMatrix.Column(n);
+                        double h = T / Narr[i];
+                        double tamedCoeff = 1 / (1 + Math.Pow(n, -1 / 2) * X.L2Norm());
+
+                        Vector<double> oneStep = tamedCoeff * X * (lambda * (mu - X.L2Norm())) * h + 
+                            tamedCoeff * eta * Math.Pow(X.L2Norm(), 3 / 2) * z * Math.Sqrt(h);
+
+                        //Xn.SetColumn(i, Xn.Column(i) + CalculateOneStep(Xn.Column(i), randnMatrix.Column(n), n, T / Narr[i]));
+                        Xn.SetColumn(i, Xn.Column(i) + oneStep);
                     }
                 }
             }
@@ -57,46 +115,6 @@ namespace Simulation
             }
 
             return Xs;
-        }
-
-        static void Main(string[] args)
-        {
-            //MC Params
-            for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
-            Nmax = Narr[Narr.Length - 1];
-
-            //Run Calcs and only save end values
-            Vector<double> Xs = Vector<double>.Build.Dense(n2steps, 0);
-
-            if (serial)
-            {
-                for (int m = 0; m < M; m++)
-                    Xs += RunMC();
-            }
-            else
-            {
-                object mylock = new object();
-
-                Parallel.For(0, M,
-                    () => Vector<double>.Build.Dense(n2steps, 0),
-                (m, loopstate, vec) =>
-                {
-                    vec = RunMC();
-                    return vec;
-                },
-                (vec) =>
-                {
-                    lock (mylock) { Xs = Xs + vec; }
-                }
-                );
-            }
-
-            Xs = Xs / M;
-            Xs.PointwiseSqrt();
-            Console.Write(Xs);
-            Console.ReadKey();
-            //DelimitedWriter.Wirte("../../../Xnp1.csv", Xn, ",");
-
         }
     }
 }
