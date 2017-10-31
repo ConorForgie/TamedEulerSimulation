@@ -1,5 +1,6 @@
 ﻿using MathNet.Numerics.Distributions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,10 +19,10 @@ namespace Simulation
         private const int n2steps = 10;
         private static int[] Narr = new int[n2steps];
         private static int Nmax;
-        private const int M = 1000;
+        private const int M = 10000;
 
 
-        static void Main(string[] args)
+        static void OldMain(string[] args)
         {
             //MC Params
             for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
@@ -36,32 +37,51 @@ namespace Simulation
             {
                 Console.WriteLine("Running in Serial");
                 for (int m = 0; m < M; m++)
-                    Xs = Xs.Select((x,index) => x+ RunMC()[index]).ToArray();
+                {
+                    double[] MC_path = RunMC();
+                    Xs = Xs.Select((x, index) => x + MC_path[index]).ToArray();
+                }
             }
             else
             {
                 Console.WriteLine("Running in Parallel");
 
-                object mylock = new object();
+                //object mylock = new object();
 
-                Parallel.For(0, M,
-                    () => new double[n2steps],
-                (m, loopstate, vec) =>
+                //Parallel.For(0, M,
+                //    () => new double[n2steps],
+                //(m, loopstate, vec) =>
+                //{
+                //    double[] MC_path = RunMC();
+                //    vec =  vec.Select((x,index) => x+ MC_path[index]).ToArray();
+                //    return vec;
+                //},
+                //(vec) =>
+                //{
+                //    lock (mylock) { Xs = Xs.Select((x, index) => x + vec[index]).ToArray(); }
+                //}
+                //);
+
+                ConcurrentBag<double[]> paths = new ConcurrentBag<double[]>();
+
+                Parallel.For(0, M, m =>
+                  {
+                      double[] MCpath = RunMC();
+                      paths.Add(MCpath);
+                  }
+                 );
+
+                double[][] mc_paths = paths.ToArray();
+                for(int i =0; i<M; i++)
                 {
-                    vec =  vec.Select((x,index) => x+ RunMC()[index]).ToArray();
-                    return vec;
-                },
-                (vec) =>
-                {
-                    lock (mylock) { Xs = Xs.Select((x, index) => x + vec[index]).ToArray(); }
-                }
-                );
+                    Xs = Xs.Select((x, index) => x + mc_paths[i][index]).ToArray();
+                }                
 
             }
             watch.Stop();
             TimeSpan elapsedMs = watch.Elapsed;
-            Xs = Xs.Select(x => Math.Sqrt(x/M)).ToArray();
-            foreach(var item in Xs)
+            Xs = Xs.Select(x => Math.Sqrt(x / M)).ToArray();
+            foreach (var item in Xs)
                 Console.WriteLine(item.ToString("#.######"));
             Console.WriteLine("Elapsed time = " + elapsedMs.ToString("mm\\:ss\\.ff"));
             Console.ReadKey();
@@ -78,7 +98,7 @@ namespace Simulation
         private static double[] RunMC()
         {
             double[] Xs = new double[n2steps];
-            double[,] Xn = new double[2,n2steps];
+            double[,] Xn = new double[2, n2steps];
             for (int i = 0; i < 2; i++)
                 for (int j = 0; j < n2steps; j++)
                     Xn[i, j] = 1;
@@ -100,12 +120,12 @@ namespace Simulation
                         double tamedCoeff = 1 / (1 + Math.Pow(n, -1 / 2) * L2Norm(X));
 
                         double[] drift = X.Select(x => x * (lambda * (mu - L2Norm(X))) * h * tamedCoeff).ToArray();
-                        double[] diffusion = MatrixVecMult(eta,z).Select(x => x* tamedCoeff * Math.Pow(L2Norm(X), 3 / 2) * Math.Sqrt(h)).ToArray();
+                        double[] diffusion = MatrixVecMult(eta, z).Select(x => x * tamedCoeff * Math.Pow(L2Norm(X), 3 / 2) * Math.Sqrt(h)).ToArray();
                         double[] oneStep = drift.Select((x, index) => x + diffusion[index]).ToArray();
 
                         //Xn.SetColumn(i, Xn.Column(i) + CalculateOneStep(Xn.Column(i), randnMatrix.Column(n), n, T / Narr[i]));
-                        Xn[0,i] +=  oneStep[0];
-                        Xn[1,i] += oneStep[1];
+                        Xn[0, i] += oneStep[0];
+                        Xn[1, i] += oneStep[1];
 
                     }
                 }
@@ -115,7 +135,7 @@ namespace Simulation
 
             for (int i = 0; i < n2steps; i++)
             {
-                Xs[i] = Math.Pow(L2Norm(XnLastCol.Select((x,index) => x - Xn[index,i]).ToArray()), 2);
+                Xs[i] = Math.Pow(L2Norm(XnLastCol.Select((x, index) => x - Xn[index, i]).ToArray()), 2);
             }
 
             return Xs;
@@ -129,18 +149,18 @@ namespace Simulation
             return Math.Sqrt(sum);
         }
 
-        private static double[] MatrixVecMult(double[,] Matrix,double[] Vec)
+        private static double[] MatrixVecMult(double[,] Matrix, double[] Vec)
         {
             double[] result = new double[Vec.Length];
 
-            for(int r=0; r<Matrix.GetLength(0); r++)
+            for (int r = 0; r < Matrix.GetLength(0); r++)
             {
-                for(int c=0; c<Matrix.GetLength(1); c++)
+                for (int c = 0; c < Matrix.GetLength(1); c++)
                 {
                     double tmp = 0;
-                    for(int v=0; v<Vec.Length; v++)
+                    for (int v = 0; v < Vec.Length; v++)
                     {
-                        tmp += Matrix[r, v] * Vec[v]; 
+                        tmp += Matrix[r, v] * Vec[v];
                     }
                     result[r] = tmp;
                 }

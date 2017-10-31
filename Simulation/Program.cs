@@ -24,7 +24,7 @@ namespace Simulation
         private const int M = 10000;
         
 
-        static void OldMain(string[] args)
+        static void Main(string[] args)
         {
             //MC Params
             for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
@@ -45,21 +45,36 @@ namespace Simulation
             {
                 Console.WriteLine("Running in Parallel");
 
-                object mylock = new object();
+                //object mylock = new object();
 
-                Parallel.For(0, M,
-                    () => Vector<double>.Build.Dense(n2steps, 0),
-                (m, loopstate, vec) =>
+                //Parallel.For(0, M,
+                //    () => Vector<double>.Build.Dense(n2steps, 0),
+                //(m, loopstate, vec) =>
+                //{
+                //    vec += RunMC();
+                //    return vec;
+                //},
+                //(vec) =>
+                //{
+                //    lock (mylock) { Xs = Xs + vec; }
+                //}
+                //);
+
+                ConcurrentBag<Vector<double>> paths = new ConcurrentBag<Vector<double>>();
+
+                Parallel.For(0, M, m =>
                 {
-                    vec += RunMC();
-                    return vec;
-                },
-                (vec) =>
-                {
-                    lock (mylock) { Xs = Xs + vec; }
+                    Vector<double> vec = RunMC();
+                    paths.Add(vec);
                 }
                 );
-                
+
+                Vector<double>[] path_array = paths.ToArray();
+                foreach(Vector<double> vector in path_array)
+                {
+                    Xs += vector;
+                }
+
             }
             watch.Stop();
             TimeSpan elapsedMs = watch.Elapsed;
