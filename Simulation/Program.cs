@@ -18,13 +18,13 @@ namespace Simulation
         private const double T = 1;
         private static double[,] etaArr = { { 2 / Math.Sqrt(10), 1 / Math.Sqrt(10) }, { 1 / Math.Sqrt(10), 2 / Math.Sqrt(10) } };
         private static Matrix<double> eta = Matrix<double>.Build.DenseOfArray(etaArr);
-        private const int n2steps = 10;
+        private const int n2steps = 12;
         private static int[] Narr = new int[n2steps];
         private static int Nmax;
         private const int M = 10000;
         
 
-        static void Main(string[] args)
+        static void OldMain(string[] args)
         {
             //MC Params
             for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }

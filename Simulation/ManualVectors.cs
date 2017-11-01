@@ -16,13 +16,13 @@ namespace Simulation
         private const double mu = 1;
         private const double T = 1;
         private static double[,] eta = { { 2 / Math.Sqrt(10), 1 / Math.Sqrt(10) }, { 1 / Math.Sqrt(10), 2 / Math.Sqrt(10) } };
-        private const int n2steps = 10;
+        private const int n2steps = 12;
         private static int[] Narr = new int[n2steps];
         private static int Nmax;
         private const int M = 10000;
 
 
-        static void OldMain(string[] args)
+        static void Main(string[] args)
         {
             //MC Params
             for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
@@ -88,13 +88,6 @@ namespace Simulation
 
         }
 
-        //private static Vector<double> CalculateOneStep(Vector<double> X, Vector<double> z, int n, double h)
-        //{
-        //    double tamedCoeff = 1 / (1 + Math.Pow(n, -1 / 2) * X.L2Norm());
-
-        //    return tamedCoeff * X * (lambda * (mu - X.L2Norm())) * h + tamedCoeff * eta * Math.Pow(X.L2Norm(), 3 / 2) * z * Math.Sqrt(h);
-        //}
-
         private static double[] RunMC()
         {
             double[] Xs = new double[n2steps];
@@ -107,7 +100,7 @@ namespace Simulation
             double[] randn1 = new double[Nmax];
             double[] randn2 = new double[Nmax];
             Normal.Samples(randn1, 0, 1); Normal.Samples(randn2, 0, 1);
-            //double[,] randnMatrix = {  randn1 ,randn2 };
+
             for (int n = 0; n < Nmax; n++)
             {
                 for (int i = 0; i < n2steps; i++)
@@ -118,15 +111,13 @@ namespace Simulation
                         double[] z = { randn1[n], randn2[n] };
                         double h = T / Narr[i];
                         double tamedCoeff = 1 / (1 + Math.Pow(n, -1 / 2) * L2Norm(X));
-
-                        double[] drift = X.Select(x => x * (lambda * (mu - L2Norm(X))) * h * tamedCoeff).ToArray();
-                        double[] diffusion = MatrixVecMult(eta, z).Select(x => x * tamedCoeff * Math.Pow(L2Norm(X), 3 / 2) * Math.Sqrt(h)).ToArray();
-                        double[] oneStep = drift.Select((x, index) => x + diffusion[index]).ToArray();
-
-                        //Xn.SetColumn(i, Xn.Column(i) + CalculateOneStep(Xn.Column(i), randnMatrix.Column(n), n, T / Narr[i]));
-                        Xn[0, i] += oneStep[0];
-                        Xn[1, i] += oneStep[1];
-
+                        double[] etaZ = MatrixVecMult(eta, z);
+                        double l2nX = L2Norm(X);
+                        
+                        for (int j = 0; j < X.Length; j++)
+                        {
+                            Xn[j, i] += X[j] * (lambda * (mu - l2nX)) * h * tamedCoeff + etaZ[j] * tamedCoeff * Math.Pow(l2nX, 3 / 2) * Math.Sqrt(h);
+                        }
                     }
                 }
             }
