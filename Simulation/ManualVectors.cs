@@ -16,20 +16,22 @@ namespace Simulation
         private const double mu = 1;
         private const double T = 1;
         private static double[,] eta = { { 2 / Math.Sqrt(10), 1 / Math.Sqrt(10) }, { 1 / Math.Sqrt(10), 2 / Math.Sqrt(10) } };
-        private const int n2steps = 12;
-        private static int[] Narr = new int[n2steps];
+        private const int n2start = 6;
+        private const int n2steps = 16;
+        private const int n2length = n2steps - n2start;
+        private static int[] Narr = new int[n2length];
         private static int Nmax;
-        private const int M = 10000;
+        private const int M = 1000;
 
 
-        static void Main(string[] args)
+        static void OldMain(string[] args)
         {
             //MC Params
-            for (int i = 0; i < n2steps; i++) { Narr[i] = (int)Math.Pow(2, i); }
+            for (int i = 0; i < n2length; i++) { Narr[i] = (int)Math.Pow(2, i + n2start); }
             Nmax = Narr[Narr.Length - 1];
 
             //Run Calcs and only save end values
-            double[] Xs = new double[n2steps];
+            double[] Xs = new double[n2length];
 
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -81,8 +83,11 @@ namespace Simulation
             watch.Stop();
             TimeSpan elapsedMs = watch.Elapsed;
             Xs = Xs.Select(x => Math.Sqrt(x / M)).ToArray();
-            foreach (var item in Xs)
-                Console.WriteLine(item.ToString("#.######"));
+            for(int i=0; i<n2length; i++)
+            {
+                Console.Write("2^{0}", i+n2start);Console.Write(" ");
+                Console.WriteLine(Xs[i].ToString("#.######"));
+            }
             Console.WriteLine("Elapsed time = " + elapsedMs.ToString("mm\\:ss\\.ff"));
             Console.ReadKey();
 
@@ -90,10 +95,10 @@ namespace Simulation
 
         private static double[] RunMC()
         {
-            double[] Xs = new double[n2steps];
-            double[,] Xn = new double[2, n2steps];
+            double[] Xs = new double[n2length];
+            double[,] Xn = new double[2, n2length];
             for (int i = 0; i < 2; i++)
-                for (int j = 0; j < n2steps; j++)
+                for (int j = 0; j < n2length; j++)
                     Xn[i, j] = 1;
 
             //Generate Random Number Matrix
@@ -103,12 +108,18 @@ namespace Simulation
 
             for (int n = 0; n < Nmax; n++)
             {
-                for (int i = 0; i < n2steps; i++)
+                for (int i = 0; i < n2length; i++)
                 {
-                    if (n % Narr[Narr.Length - 1 - i] == 0)
+                    if (n % Nmax/Narr[Narr.Length - 1 - i] == 0)
                     {
                         double[] X = { Xn[0, i], Xn[1, i] };
-                        double[] z = { randn1[n], randn2[n] };
+                        double r1 = 0; double r2 = 0;
+                        for (int j = 0; j < Nmax / Narr[Narr.Length - 1 - i]; j++)
+                        {
+                            r1 += randn1[n + j];
+                            r2 += randn2[n + j];
+                        }
+                        double[] z = { Math.Sqrt(1/Nmax)*r1, Math.Sqrt(1 / Nmax) * r2 };
                         double h = T / Narr[i];
                         double tamedCoeff = 1 / (1 + Math.Pow(n, -1 / 2) * L2Norm(X));
                         double[] etaZ = MatrixVecMult(eta, z);
@@ -124,7 +135,7 @@ namespace Simulation
 
             double[] XnLastCol = { Xn[0, Xn.GetLength(1) - 1], Xn[1, Xn.GetLength(1) - 1] };
 
-            for (int i = 0; i < n2steps; i++)
+            for (int i = 0; i < n2length; i++)
             {
                 Xs[i] = Math.Pow(L2Norm(XnLastCol.Select((x, index) => x - Xn[index, i]).ToArray()), 2);
             }
